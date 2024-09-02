@@ -1,21 +1,29 @@
-FROM node as vite-app
+# Use the official Node.js runtime as the base image
+FROM node:18 as build
 
-WORKDIR /app/front-end
-COPY ./front-end .
+# Set the working directory in the container
+WORKDIR /app
 
-RUN ["npm", "i"]
-RUN ["npm", "run", "build"]
+# Copy package.json and package-lock.json to the working directory
+COPY package*.json ./
 
+# Install dependencies
+RUN npm install
+
+# Copy the entire application code to the working directory
+COPY . .
+
+# Build the Vite app for production
+RUN npm run build
+
+# Use Nginx as the production server
 FROM nginx:alpine
 
-WORKDIR /usr/share/nginx/
+# Copy the built Vite app to Nginx's web server directory
+COPY --from=build /app/dist /usr/share/nginx/html
 
-RUN rm -rf html
-RUN mkdir html
+# Expose port 80 for the Nginx server
+EXPOSE 80
 
-WORKDIR /
-
-COPY ./nginx/nginx.conf /etc/nginx
-COPY --from=vite-app ./app/front-end/dist /usr/share/nginx/html
-
-ENTRYPOINT ["nginx", "-g", "daemon off;"]
+# Start Nginx when the container runs
+CMD ["nginx", "-g", "daemon off;"]
